@@ -3,22 +3,58 @@
     Author: Matt LaVoie
 */
 
-#define F_CPU 16000000UL //Set the clock frequency
-#include <avr/io.h> //call IO library
-#include <util/delay.h> //call delay library
+#define F_CPU 16000000UL
+#include <avr/io.h>
+#include <util/delay.h>
+#include <avr/interrupt.h>
+
+int count = 2;
+int Hz = 5;
 
 int main(void)
 {
-    DDRB |= (1<<DDB5); //Set Port B 5 or PB5 or PCINT5 or pin 17 to output (1 is output and 0 is input)
-    while(1)
+    DDRB |= (1<<DDRB5);
+	DDRB |= (0<<DDRB7);
+	
+	TCNT1 = -7812/Hz;														//Set Timer command Control Value to 1/240 sec
+	TCCR1A |=(0b00<<COM1A0)|(0b00<<COM1B0)|(0b00<<WGM10);				//Sets Timer to Normal Mode
+	TCCR1B |=(0b00<<WGM12)|(0b101<<CS10);								//Set TIMSKx so timer x interrupts a process
+	TIMSK1 |=(0b1<<TOIE1);
+	
+	sei();
+
+    while (1) 
     {
-        /*
-        PORTB |= (1<<PORTB5);    //Set PB5 to 1 which is high (LED on)
-        _delay_ms(1000);        //Delay for 1000ms or 1 sec
-        PORTB &= ~(1<<PORTB5);    //Set PB5 to 0 which is low (LED off)
-        _delay_ms(1000);        //Delay for 1000ms or 1 sec
-        */
-        PINB |= (1<<PINB5);
-        _delay_ms(1000);        //Delay for 1000ms or 1 sec
+		 if ((PINB & (1 << 7)) == 0)
+		 {
+			 count++;
+			 if (count > 3) count = 1;
+			 while((PINB & (1 << 7)) == 0); 
+			 
+			 switch (count)
+			 {
+				 case 1: Hz = 1;
+				 break;
+				 case 2: Hz = 5;
+				 break;
+				 case 3: Hz = 10;
+				 break;
+			 }
+		 }
     }
+}
+
+ISR(TIMER1_OVF_vect)
+{
+	switch (count)
+	{
+		case 1: Hz = 1;
+		break;
+		case 2: Hz = 5;
+		break;
+		case 3: Hz = 10;
+		break;
+	}
+	PORTB = PORTB ^ 0b00100000;
+	TCNT1 = -7812/Hz;
 }
